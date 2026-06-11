@@ -11,10 +11,10 @@ let foods = [];
 let camera = { x: WORLD_SIZE / 2, y: WORLD_SIZE / 2 };
 let isGameOver = false;
 
-// Inputs
+// Inputs & Control States
 let mouseX = window.innerWidth / 2;
 let mouseY = window.innerHeight / 2;
-let useTouch = false;
+let controlMode = "mouse"; // "mouse", "keyboard", or "touch"
 let keys = {};
 
 // Names and Colors
@@ -426,21 +426,26 @@ function showGameOver() {
 
 // Main Update loop
 function update() {
-    if (!isGameOver) {
-        // Hybrid Keyboard and Mouse Inputs
-        let keyDx = 0;
-        let keyDy = 0;
+    if (!isGameOver && player) {
+        
+        // 1. Keyboard Steer Calculations
+        if (controlMode === "keyboard") {
+            let keyDx = 0;
+            let keyDy = 0;
 
-        if (keys['arrowup'] || keys['w']) keyDy = -1;
-        if (keys['arrowdown'] || keys['s']) keyDy = 1;
-        if (keys['arrowleft'] || keys['a']) keyDx = -1;
-        if (keys['arrowright'] || keys['d']) keyDx = 1;
+            if (keys['arrowup'] || keys['w']) keyDy = -1;
+            if (keys['arrowdown'] || keys['s']) keyDy = 1;
+            if (keys['arrowleft'] || keys['a']) keyDx = -1;
+            if (keys['arrowright'] || keys['d']) keyDx = 1;
 
-        if (keyDx !== 0 || keyDy !== 0) {
-            // Steering via keyboard overrides mouse instantly
-            player.angle = Math.atan2(keyDy, keyDx);
-        } else if (!useTouch) {
-            // Default: steer towards mouse pointer
+            // Only update direction angle if a direction key is actively held down.
+            // If they release keys, the snake continues in its current direction.
+            if (keyDx !== 0 || keyDy !== 0) {
+                player.angle = Math.atan2(keyDy, keyDx);
+            }
+        } 
+        // 2. Mouse Steer Calculations
+        else if (controlMode === "mouse") {
             const dx = mouseX - canvas.width / 2;
             const dy = mouseY - canvas.height / 2;
             player.angle = Math.atan2(dy, dx);
@@ -501,14 +506,28 @@ function resizeCanvas() {
 }
 window.addEventListener('resize', resizeCanvas);
 
-// Mouse Input
+// Mouse Movement Input
 window.addEventListener('mousemove', (e) => {
-    if (useTouch) return;
+    if (controlMode === "touch") return;
+    
+    // Calculate distance mouse moved to filter out minor/accidental movements
+    const deltaX = Math.abs(e.clientX - mouseX);
+    const deltaY = Math.abs(e.clientY - mouseY);
+    
+    if (deltaX > 2 || deltaY > 2) {
+        controlMode = "mouse"; // Switch focus back to mouse controls
+    }
+    
     mouseX = e.clientX;
     mouseY = e.clientY;
 });
-window.addEventListener('mousedown', () => { if (!useTouch && player) player.isBoosting = true; });
-window.addEventListener('mouseup', () => { if (!useTouch && player) player.isBoosting = false; });
+
+window.addEventListener('mousedown', () => { 
+    if (controlMode !== "touch" && player) player.isBoosting = true; 
+});
+window.addEventListener('mouseup', () => { 
+    if (controlMode !== "touch" && player) player.isBoosting = false; 
+});
 
 // Keyboard Listeners
 window.addEventListener('keydown', (e) => {
@@ -516,7 +535,12 @@ window.addEventListener('keydown', (e) => {
     keys[lowKey] = true;
     keys[e.key] = true;
 
-    // Prevent default scrolling for arrows and space
+    // Hand control mode over to keyboard if Arrow/WASD keys are pressed
+    if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(lowKey)) {
+        controlMode = "keyboard";
+    }
+
+    // Prevent default browser scrolling actions on arrows and spacebar
     if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'spacebar'].includes(lowKey)) {
         e.preventDefault();
     }
@@ -540,6 +564,12 @@ window.addEventListener('keyup', (e) => {
     }
 });
 
+// Avoid controls freezing when window loses focus
+window.addEventListener('blur', () => {
+    keys = {};
+    if (player) player.isBoosting = false;
+});
+
 // Mobile Touch Control Events
 const mobileControls = document.getElementById('mobile-controls');
 const joystickZone = document.getElementById('joystick-zone');
@@ -550,6 +580,7 @@ let joystickActive = false;
 let joystickStart = { x: 0, y: 0 };
 
 window.addEventListener('touchstart', () => {
+    controlMode = "touch";
     useTouch = true;
     mobileControls.style.display = 'block';
 }, { once: true });
