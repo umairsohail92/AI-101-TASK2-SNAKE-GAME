@@ -59,18 +59,42 @@ body, html {
     margin-bottom: 3px;
 }
 
+#right-hud {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 10px;
+    pointer-events: auto; /* Allow buttons inside this container to be clickable */
+}
+
 #score-display {
     font-size: 22px;
     font-weight: bold;
     background: rgba(0, 0, 0, 0.6);
     padding: 6px 16px;
     border-radius: 8px;
-    height: fit-content;
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 #score-val {
     color: #4cd137;
+}
+
+#hud-restart-btn {
+    padding: 8px 16px;
+    font-size: 13px;
+    background: #e74c3c;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    font-weight: bold;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+    outline: none;
+}
+
+#hud-restart-btn:hover {
+    background: #c0392b;
 }
 
 #game-over-screen {
