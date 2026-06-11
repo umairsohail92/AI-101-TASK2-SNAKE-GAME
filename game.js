@@ -15,6 +15,7 @@ let isGameOver = false;
 let mouseX = window.innerWidth / 2;
 let mouseY = window.innerHeight / 2;
 let useTouch = false;
+let keys = {};
 
 // Names and Colors
 const BOT_NAMES = ["Python", "Anaconda", "Mamba", "Devourer", "SlitherPro", "Chonker", "NeonSnake", "Glutton", "Worminator", "Spaghetti", "Noodle", "LongBoi", "Cobra", "Basilisk", "Viper"];
@@ -306,6 +307,9 @@ function init() {
     isGameOver = false;
     document.getElementById('game-over-screen').style.display = 'none';
 
+    // Reset camera coordinates to center
+    camera = { x: WORLD_SIZE / 2, y: WORLD_SIZE / 2 };
+
     // Init Player
     player = new Worm(WORLD_SIZE / 2, WORLD_SIZE / 2, '#00bcff', 'Player', true);
     worms.push(player);
@@ -423,8 +427,20 @@ function showGameOver() {
 // Main Update loop
 function update() {
     if (!isGameOver) {
-        // Player target updating
-        if (!useTouch) {
+        // Hybrid Keyboard and Mouse Inputs
+        let keyDx = 0;
+        let keyDy = 0;
+
+        if (keys['arrowup'] || keys['w']) keyDy = -1;
+        if (keys['arrowdown'] || keys['s']) keyDy = 1;
+        if (keys['arrowleft'] || keys['a']) keyDx = -1;
+        if (keys['arrowright'] || keys['d']) keyDx = 1;
+
+        if (keyDx !== 0 || keyDy !== 0) {
+            // Steering via keyboard overrides mouse instantly
+            player.angle = Math.atan2(keyDy, keyDx);
+        } else if (!useTouch) {
+            // Default: steer towards mouse pointer
             const dx = mouseX - canvas.width / 2;
             const dy = mouseY - canvas.height / 2;
             player.angle = Math.atan2(dy, dx);
@@ -440,7 +456,7 @@ function update() {
             w.update();
             if (w.dead) {
                 if (w.isPlayer) {
-                    showGameOver();
+                    if (!isGameOver) showGameOver();
                 } else {
                     worms.splice(i, 1);
                     spawnBot();
@@ -467,7 +483,7 @@ function draw() {
 
     // Fast HTML DOM Updates
     if (uiFrameCounter++ % 15 === 0) {
-        document.getElementById('score-val').innerText = player.score;
+        document.getElementById('score-val').innerText = player ? player.score : 0;
         updateLeaderboard();
     }
 }
@@ -491,8 +507,38 @@ window.addEventListener('mousemove', (e) => {
     mouseX = e.clientX;
     mouseY = e.clientY;
 });
-window.addEventListener('mousedown', () => { if (!useTouch) player.isBoosting = true; });
-window.addEventListener('mouseup', () => { if (!useTouch) player.isBoosting = false; });
+window.addEventListener('mousedown', () => { if (!useTouch && player) player.isBoosting = true; });
+window.addEventListener('mouseup', () => { if (!useTouch && player) player.isBoosting = false; });
+
+// Keyboard Listeners
+window.addEventListener('keydown', (e) => {
+    const lowKey = e.key.toLowerCase();
+    keys[lowKey] = true;
+    keys[e.key] = true;
+
+    // Prevent default scrolling for arrows and space
+    if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' ', 'spacebar'].includes(lowKey)) {
+        e.preventDefault();
+    }
+
+    if (lowKey === ' ' || lowKey === 'spacebar') {
+        if (player) player.isBoosting = true;
+    }
+
+    if (lowKey === 'r') {
+        init();
+    }
+});
+
+window.addEventListener('keyup', (e) => {
+    const lowKey = e.key.toLowerCase();
+    keys[lowKey] = false;
+    keys[e.key] = false;
+
+    if (lowKey === ' ' || lowKey === 'spacebar') {
+        if (player) player.isBoosting = false;
+    }
+});
 
 // Mobile Touch Control Events
 const mobileControls = document.getElementById('mobile-controls');
@@ -548,7 +594,7 @@ function handleJoystickMove(touch) {
     const maxRadius = 35;
 
     const angle = Math.atan2(dy, dx);
-    player.angle = angle;
+    if (player) player.angle = angle;
 
     const moveDist = Math.min(distance, maxRadius);
     const knobX = Math.cos(angle) * moveDist;
@@ -559,17 +605,18 @@ function handleJoystickMove(touch) {
 
 boostBtn.addEventListener('touchstart', (e) => {
     e.preventDefault();
-    player.isBoosting = true;
+    if (player) player.isBoosting = true;
 });
 boostBtn.addEventListener('touchend', (e) => {
     e.preventDefault();
-    player.isBoosting = false;
+    if (player) player.isBoosting = false;
 });
 
-// Respawn Interaction
+// UI Restart Action Listeners
 document.getElementById('respawn-btn').addEventListener('click', init);
+document.getElementById('hud-restart-btn').addEventListener('click', init);
 
-// Boot
+// Boot Game
 resizeCanvas();
 init();
 gameLoop();
