@@ -1,83 +1,190 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const scoreEl = document.getElementById("score");
+const highScoreEl = document.getElementById("highScore");
+const finalScoreEl = document.getElementById("finalScore");
+
+const startScreen = document.getElementById("startScreen");
+const gameOverScreen = document.getElementById("gameOver");
+
+const startBtn = document.getElementById("startBtn");
+const restartBtn = document.getElementById("restartBtn");
+const pauseBtn = document.getElementById("pauseBtn");
+
+const GRID = 20;
+
+let snake, food;
+let dx, dy;
+let score = 0;
+let highScore = 0;
+
+let speed = 6;
+let lastTime = 0;
+let acc = 0;
+
+let running = false;
+let paused = false;
+
+/* RESIZE */
+function resize() {
+    canvas.width = Math.min(500, window.innerWidth * 0.9);
+    canvas.height = canvas.width;
+}
+resize();
+window.addEventListener("resize", resize);
+
+/* INIT */
+function init() {
+    snake = [{ x: 10, y: 10 }];
+    dx = 1;
+    dy = 0;
+    score = 0;
+    speed = 6;
+    acc = 0;
+
+    highScore = localStorage.getItem("neoHigh") || 0;
+    highScoreEl.textContent = highScore;
+
+    food = spawnFood();
+    scoreEl.textContent = 0;
+
+    gameOverScreen.classList.add("hidden");
 }
 
-body {
-    background: radial-gradient(circle at top, #0a0a1a, #000);
-    font-family: Arial;
-    color: white;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
+/* FOOD */
+function spawnFood() {
+    return {
+        x: Math.floor(Math.random() * (canvas.width / GRID)),
+        y: Math.floor(Math.random() * (canvas.height / GRID))
+    };
 }
 
-/* GAME WRAPPER */
-.game {
-    width: 95%;
-    max-width: 520px;
-    text-align: center;
+/* GAME LOOP */
+function loop(time) {
+    if (!running) return;
+
+    requestAnimationFrame(loop);
+
+    if (paused) return;
+
+    let delta = (time - lastTime) / 1000;
+    lastTime = time;
+
+    acc += delta;
+
+    if (acc < 1 / speed) return;
+
+    acc = 0;
+    update();
 }
 
-/* HUD */
-.hud {
-    display: flex;
-    justify-content: space-between;
-    padding: 10px;
-    margin-bottom: 10px;
-    background: rgba(255,255,255,0.05);
-    border-radius: 12px;
-    backdrop-filter: blur(10px);
+/* UPDATE */
+function update() {
+    let head = {
+        x: snake[0].x + dx,
+        y: snake[0].y + dy
+    };
+
+    let max = canvas.width / GRID;
+
+    if (
+        head.x < 0 ||
+        head.y < 0 ||
+        head.x >= max ||
+        head.y >= max
+    ) {
+        return gameOver();
+    }
+
+    if (snake.some(s => s.x === head.x && s.y === head.y)) {
+        return gameOver();
+    }
+
+    snake.unshift(head);
+
+    if (head.x === food.x && head.y === food.y) {
+        score++;
+        scoreEl.textContent = score;
+
+        if (score > highScore) {
+            highScore = score;
+            localStorage.setItem("neoHigh", highScore);
+            highScoreEl.textContent = highScore;
+        }
+
+        food = spawnFood();
+
+        /* SPEED BOOST */
+        if (score % 5 === 0) speed += 0.5;
+
+    } else {
+        snake.pop();
+    }
+
+    draw();
 }
 
-/* CANVAS */
-canvas {
-    width: 100%;
-    background: #050505;
-    border-radius: 14px;
-    border: 1px solid #39ff14;
-    box-shadow:
-        0 0 20px rgba(57,255,20,0.2),
-        inset 0 0 20px rgba(0,255,100,0.05);
+/* DRAW (MODERN EFFECTS) */
+function draw() {
+    ctx.fillStyle = "#050505";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    /* FOOD GLOW */
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = "red";
+    ctx.fillStyle = "red";
+    ctx.fillRect(food.x * GRID, food.y * GRID, GRID, GRID);
+
+    /* SNAKE NEON */
+    snake.forEach((s, i) => {
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = "#39ff14";
+
+        ctx.fillStyle = i === 0 ? "#7CFC00" : "#39ff14";
+        ctx.fillRect(s.x * GRID, s.y * GRID, GRID - 2, GRID - 2);
+    });
+
+    ctx.shadowBlur = 0;
 }
 
-/* OVERLAY */
-.overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(0,0,0,0.92);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    z-index: 10;
+/* GAME OVER */
+function gameOver() {
+    running = false;
+    finalScoreEl.textContent = score;
+    gameOverScreen.classList.remove("hidden");
 }
 
-.hidden {
-    display: none;
+/* CONTROLS */
+document.addEventListener("keydown", (e) => {
+    if (e.key === " ") togglePause();
+
+    if (e.key === "ArrowUp" && dy === 0) { dx = 0; dy = -1; }
+    if (e.key === "ArrowDown" && dy === 0) { dx = 0; dy = 1; }
+    if (e.key === "ArrowLeft" && dx === 0) { dx = -1; dy = 0; }
+    if (e.key === "ArrowRight" && dx === 0) { dx = 1; dy = 0; }
+});
+
+/* PAUSE */
+function togglePause() {
+    if (!running) return;
+    paused = !paused;
+    pauseBtn.textContent = paused ? "Resume" : "Pause";
 }
 
 /* BUTTONS */
-button {
-    margin-top: 12px;
-    padding: 10px 18px;
-    background: linear-gradient(45deg, #39ff14, #00ffcc);
-    border: none;
-    border-radius: 10px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: 0.2s;
-}
+startBtn.onclick = () => {
+    startScreen.classList.add("hidden");
+    running = true;
+    init();
+    requestAnimationFrame(loop);
+};
 
-button:hover {
-    transform: scale(1.05);
-}
+restartBtn.onclick = () => {
+    gameOverScreen.classList.add("hidden");
+    running = true;
+    init();
+    requestAnimationFrame(loop);
+};
 
-/* TITLE GLOW */
-h1 {
-    font-size: 40px;
-    color: #39ff14;
-    text-shadow: 0 0 20px #39ff14;
-}
+pauseBtn.onclick = togglePause;
