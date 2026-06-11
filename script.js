@@ -188,3 +188,23 @@ restartBtn.onclick = () => {
 };
 
 pauseBtn.onclick = togglePause;
+function setDirection(dir) {
+    if (dir === "up" && dy === 0) {
+        dx = 0; dy = -1;
+    }
+    if (dir === "down" && dy === 0) {
+        dx = 0; dy = 1;
+    }
+    if (dir === "left" && dx === 0) {
+        dx = -1; dy = 0;
+    }
+    if (dir === "right" && dx === 0) {
+        dx = 1; dy = 0;
+    }
+}
+
+/* BUTTON EVENTS */
+document.getElementById("up").onclick = () => setDirection("up");
+document.getElementById("down").onclick = () => setDirection("down");
+document.getElementById("left").onclick = () => setDirection("left");
+document.getElementById("right").onclick = () => setDirection("right");
