@@ -1,27 +1,38 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Snake Game</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neon Arcade Snake</title>
+<link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
-<div class="game-container">
+<div class="game">
 
-    <h1>🐍 Snake Game</h1>
-
-    <div class="scoreboard">
-        <div>Score: <span id="score">0</span></div>
-        <div>High Score: <span id="highScore">0</span></div>
+    <!-- START SCREEN -->
+    <div id="startScreen" class="overlay">
+        <h1>NEON SNAKE</h1>
+        <p>Press Start to Enter Arcade Mode</p>
+        <button id="startBtn">START</button>
     </div>
 
-    <canvas id="gameCanvas"></canvas>
+    <!-- HUD -->
+    <div class="hud">
+        <div>Score: <span id="score">0</span></div>
+        <div>High: <span id="highScore">0</span></div>
+        <button id="pauseBtn">Pause</button>
+    </div>
 
-    <div id="gameOver" class="hidden">
-        <h2>Game Over</h2>
-        <button onclick="restartGame()">Restart</button>
+    <!-- GAME CANVAS -->
+    <canvas id="game"></canvas>
+
+    <!-- GAME OVER -->
+    <div id="gameOver" class="overlay hidden">
+        <h2>GAME OVER</h2>
+        <p>Your Score: <span id="finalScore"></span></p>
+        <button id="restartBtn">RETRY</button>
     </div>
 
 </div>
