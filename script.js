@@ -1,210 +1,204 @@
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-const scoreEl = document.getElementById("score");
-const highScoreEl = document.getElementById("highScore");
-const finalScoreEl = document.getElementById("finalScore");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-const startScreen = document.getElementById("startScreen");
-const gameOverScreen = document.getElementById("gameOver");
+let scoreEl = document.getElementById("score");
+let highEl = document.getElementById("high");
+let statusEl = document.getElementById("status");
 
-const startBtn = document.getElementById("startBtn");
-const restartBtn = document.getElementById("restartBtn");
-const pauseBtn = document.getElementById("pauseBtn");
-
-const GRID = 20;
-
-let snake, food;
-let dx, dy;
-let score = 0;
-let highScore = 0;
-
-let speed = 6;
-let lastTime = 0;
-let acc = 0;
+let startScreen = document.getElementById("start");
+let gameOverScreen = document.getElementById("gameOver");
 
 let running = false;
-let paused = false;
 
-/* RESIZE */
-function resize() {
-    canvas.width = Math.min(500, window.innerWidth * 0.9);
-    canvas.height = canvas.width;
-}
-resize();
-window.addEventListener("resize", resize);
+/* CAMERA */
+let camera = { x: 0, y: 0 };
 
-/* INIT */
-function init() {
-    snake = [{ x: 10, y: 10 }];
-    dx = 1;
-    dy = 0;
-    score = 0;
-    speed = 6;
-    acc = 0;
+/* PLAYER WORM */
+let worm;
 
-    highScore = localStorage.getItem("neoHigh") || 0;
-    highScoreEl.textContent = highScore;
-
-    food = spawnFood();
-    scoreEl.textContent = 0;
-
-    gameOverScreen.classList.add("hidden");
-}
+/* ENEMIES */
+let enemies = [];
 
 /* FOOD */
-function spawnFood() {
-    return {
-        x: Math.floor(Math.random() * (canvas.width / GRID)),
-        y: Math.floor(Math.random() * (canvas.height / GRID))
+let food = [];
+
+let score = 0;
+let high = localStorage.getItem("high") || 0;
+highEl.innerText = high;
+
+/* INIT GAME */
+function init() {
+    worm = {
+        x: 0,
+        y: 0,
+        angle: 0,
+        speed: 2.5,
+        boost: false,
+        body: []
     };
+
+    enemies = [];
+    food = [];
+
+    for (let i = 0; i < 150; i++) {
+        food.push({
+            x: (Math.random() - 0.5) * 4000,
+            y: (Math.random() - 0.5) * 4000
+        });
+    }
+
+    for (let i = 0; i < 5; i++) {
+        enemies.push({
+            x: Math.random() * 2000,
+            y: Math.random() * 2000,
+            angle: Math.random() * Math.PI * 2,
+            body: []
+        });
+    }
+
+    score = 0;
 }
 
+/* INPUT */
+let mouse = { x: 0, y: 0 };
+
+document.addEventListener("mousemove", e => {
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+});
+
+document.addEventListener("keydown", e => {
+    if (e.key === "Shift") worm.boost = true;
+});
+
+document.addEventListener("keyup", e => {
+    if (e.key === "Shift") worm.boost = false;
+});
+
 /* GAME LOOP */
-function loop(time) {
+function loop() {
     if (!running) return;
 
     requestAnimationFrame(loop);
 
-    if (paused) return;
-
-    let delta = (time - lastTime) / 1000;
-    lastTime = time;
-
-    acc += delta;
-
-    if (acc < 1 / speed) return;
-
-    acc = 0;
     update();
+    draw();
 }
 
 /* UPDATE */
 function update() {
-    let head = {
-        x: snake[0].x + dx,
-        y: snake[0].y + dy
-    };
 
-    let max = canvas.width / GRID;
+    let dx = mouse.x - canvas.width / 2;
+    let dy = mouse.y - canvas.height / 2;
 
-    if (
-        head.x < 0 ||
-        head.y < 0 ||
-        head.x >= max ||
-        head.y >= max
-    ) {
-        return gameOver();
-    }
+    worm.angle = Math.atan2(dy, dx);
 
-    if (snake.some(s => s.x === head.x && s.y === head.y)) {
-        return gameOver();
-    }
+    let speed = worm.boost ? worm.speed * 2 : worm.speed;
 
-    snake.unshift(head);
+    worm.x += Math.cos(worm.angle) * speed;
+    worm.y += Math.sin(worm.angle) * speed;
 
-    if (head.x === food.x && head.y === food.y) {
-        score++;
-        scoreEl.textContent = score;
+    worm.body.unshift({ x: worm.x, y: worm.y });
 
-        if (score > highScore) {
-            highScore = score;
-            localStorage.setItem("neoHigh", highScore);
-            highScoreEl.textContent = highScore;
+    if (worm.body.length > score * 6 + 30) worm.body.pop();
+
+    camera.x = worm.x;
+    camera.y = worm.y;
+
+    /* FOOD EAT */
+    food.forEach((f, i) => {
+        let d = Math.hypot(worm.x - f.x, worm.y - f.y);
+        if (d < 20) {
+            score++;
+            scoreEl.innerText = score;
+
+            food[i] = {
+                x: (Math.random() - 0.5) * 4000,
+                y: (Math.random() - 0.5) * 4000
+            };
+
+            if (score > high) {
+                high = score;
+                localStorage.setItem("high", high);
+                highEl.innerText = high;
+            }
         }
+    });
 
-        food = spawnFood();
-
-        /* SPEED BOOST */
-        if (score % 5 === 0) speed += 0.5;
-
-    } else {
-        snake.pop();
+    /* SELF COLLISION */
+    for (let i = 20; i < worm.body.length; i++) {
+        let b = worm.body[i];
+        if (Math.hypot(worm.x - b.x, worm.y - b.y) < 10) {
+            die();
+        }
     }
 
-    draw();
+    /* ENEMY AI (BASIC CHASE FOOD) */
+    enemies.forEach(e => {
+        let target = food[0];
+
+        e.angle = Math.atan2(target.y - e.y, target.x - e.x);
+
+        e.x += Math.cos(e.angle) * 1.5;
+        e.y += Math.sin(e.angle) * 1.5;
+
+        e.body.unshift({ x: e.x, y: e.y });
+        if (e.body.length > 60) e.body.pop();
+    });
 }
 
-/* DRAW (MODERN EFFECTS) */
+/* DRAW */
 function draw() {
+
     ctx.fillStyle = "#050505";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    /* FOOD GLOW */
-    ctx.shadowBlur = 20;
-    ctx.shadowColor = "red";
-    ctx.fillStyle = "red";
-    ctx.fillRect(food.x * GRID, food.y * GRID, GRID, GRID);
+    ctx.save();
+    ctx.translate(canvas.width / 2 - camera.x, canvas.height / 2 - camera.y);
 
-    /* SNAKE NEON */
-    snake.forEach((s, i) => {
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = "#39ff14";
-
-        ctx.fillStyle = i === 0 ? "#7CFC00" : "#39ff14";
-        ctx.fillRect(s.x * GRID, s.y * GRID, GRID - 2, GRID - 2);
+    /* FOOD */
+    food.forEach(f => {
+        ctx.fillStyle = "red";
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, 4, 0, Math.PI * 2);
+        ctx.fill();
     });
 
-    ctx.shadowBlur = 0;
+    /* ENEMIES */
+    enemies.forEach(e => {
+        e.body.forEach((b, i) => {
+            ctx.fillStyle = "orange";
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, 6, 0, Math.PI * 2);
+            ctx.fill();
+        });
+    });
+
+    /* PLAYER */
+    worm.body.forEach((b, i) => {
+        ctx.fillStyle = i === 0 ? "#7CFC00" : "#39ff14";
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 6, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    ctx.restore();
 }
 
-/* GAME OVER */
-function gameOver() {
+/* DEATH */
+function die() {
     running = false;
-    finalScoreEl.textContent = score;
+    statusEl.innerText = "DEAD";
     gameOverScreen.classList.remove("hidden");
 }
 
-/* CONTROLS */
-document.addEventListener("keydown", (e) => {
-    if (e.key === " ") togglePause();
-
-    if (e.key === "ArrowUp" && dy === 0) { dx = 0; dy = -1; }
-    if (e.key === "ArrowDown" && dy === 0) { dx = 0; dy = 1; }
-    if (e.key === "ArrowLeft" && dx === 0) { dx = -1; dy = 0; }
-    if (e.key === "ArrowRight" && dx === 0) { dx = 1; dy = 0; }
-});
-
-/* PAUSE */
-function togglePause() {
-    if (!running) return;
-    paused = !paused;
-    pauseBtn.textContent = paused ? "Resume" : "Pause";
-}
-
-/* BUTTONS */
-startBtn.onclick = () => {
+/* START */
+document.getElementById("startBtn").onclick = () => {
     startScreen.classList.add("hidden");
-    running = true;
     init();
-    requestAnimationFrame(loop);
-};
-
-restartBtn.onclick = () => {
-    gameOverScreen.classList.add("hidden");
     running = true;
-    init();
-    requestAnimationFrame(loop);
+    loop();
 };
-
-pauseBtn.onclick = togglePause;
-function setDirection(dir) {
-    if (dir === "up" && dy === 0) {
-        dx = 0; dy = -1;
-    }
-    if (dir === "down" && dy === 0) {
-        dx = 0; dy = 1;
-    }
-    if (dir === "left" && dx === 0) {
-        dx = -1; dy = 0;
-    }
-    if (dir === "right" && dx === 0) {
-        dx = 1; dy = 0;
-    }
-}
-
-/* BUTTON EVENTS */
-document.getElementById("up").onclick = () => setDirection("up");
-document.getElementById("down").onclick = () => setDirection("down");
-document.getElementById("left").onclick = () => setDirection("left");
-document.getElementById("right").onclick = () => setDirection("right");
