@@ -1,33 +1,40 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Neon Worm Arena AAA</title>
-<link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Worms Zone Clone</title>
+    <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <!-- UI Overlay -->
+    <div id="ui-container">
+        <div id="leaderboard">
+            <h3>Leaderboard</h3>
+            <ol id="leaderboard-list"></ol>
+        </div>
+        <div id="score-display">Score: <span id="score-val">0</span></div>
+    </div>
 
-<div class="hud">
-    <div>Score: <span id="score">0</span></div>
-    <div>High: <span id="high">0</span></div>
-    <div>Status: <span id="status">LIVE</span></div>
-</div>
+    <!-- Game Over Screen -->
+    <div id="game-over-screen">
+        <h2>GAME OVER</h2>
+        <p>Your Score: <span id="final-score">0</span></p>
+        <button id="respawn-btn">Respawn</button>
+    </div>
 
-<canvas id="game"></canvas>
+    <!-- Mobile Virtual Joystick & Boost Button -->
+    <div id="mobile-controls">
+        <div id="joystick-zone">
+            <div id="joystick-base">
+                <div id="joystick-knob"></div>
+            </div>
+        </div>
+        <button id="boost-btn">BOOST</button>
+    </div>
 
-<div id="start" class="overlay">
-    <h1>NEON WORM ARENA</h1>
-    <p>Move Mouse / Touch to Control</p>
-    <button id="startBtn">PLAY</button>
-</div>
-
-<div id="gameOver" class="overlay hidden">
-    <h2>YOU DIED</h2>
-    <button onclick="location.reload()">RESTART</button>
-</div>
-
-<script src="script.js"></script>
+    <script src="game.js"></script>
 </body>
 </html>
